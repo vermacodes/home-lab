@@ -2,7 +2,9 @@
 
 Here's a comprehensive table of resource requirements for common self-hosted applications in a standard home lab use case:
 
-## Table: Home Lab Application Resources
+## Home Lab Application Resources
+
+### Table: Must Haves
 
 | Application | Component/Deployment | CPU Request | CPU Limit | Memory Request | Memory Limit | Storage | Notes |
 |-------------|---------------------|-------------|-----------|----------------|--------------|---------|-------|
@@ -17,6 +19,22 @@ Here's a comprehensive table of resource requirements for common self-hosted app
 | | Zigbee2MQTT | 200m | 1000m | 256Mi | 512Mi | 2GB | Zigbee device bridge (if using Zigbee) |
 | | **Total (with DB)** | **1 CPU** | **4 CPU** | **2.4Gi** | **4.8Gi** | **28-48GB** | |
 | **Pi-hole** | Pi-hole | 200m | 500m | 256Mi | 512Mi | 5GB | DNS ad-blocking, very lightweight |
+| **Prometheus** | Prometheus | 300m | 1000m | 1.5Gi | 2.5Gi | 40-60GB | Metrics collection and storage (7-day retention) |
+| **Grafana** | Grafana | 200m | 500m | 512Mi | 1Gi | 5-10GB | Visualization dashboards |
+| **Uptime Kuma** | Uptime Kuma | 100m | 500m | 256Mi | 512Mi | 5GB | Service monitoring, very lightweight |
+| **Nginx Ingress** | Nginx Ingress | 200m | 1000m | 256Mi | 512Mi | 2GB | Alternative ingress controller |
+| **cert-manager** | cert-manager | 100m | 300m | 128Mi | 256Mi | 1GB | Automatic SSL/TLS certificates |
+| **MetalLB** | Controller | 50m | 100m | 64Mi | 128Mi | 500MB | Load balancer controller |
+| | Speaker (per node) | 50m | 100m | 64Mi | 128Mi | 500MB | BGP/Layer 2 announcer |
+| **WireGuard** | WireGuard | 100m | 200m | 64Mi | 128Mi | 1GB | VPN server (very lightweight) |
+| **n8n** | n8n | 300m | 1000m | 512Mi | 1Gi | 10GB | Workflow automation (like Zapier) |
+| | PostgreSQL | 200m | 500m | 256Mi | 512Mi | 5GB | |
+| | **Total** | **500m** | **1.5 CPU** | **768Mi** | **1.5Gi** | **15GB** | |
+
+### Table: Nice to have
+
+| Application | Component/Deployment | CPU Request | CPU Limit | Memory Request | Memory Limit | Storage | Notes |
+|-------------|---------------------|-------------|-----------|----------------|--------------|---------|-------|
 | **Nextcloud** | Nextcloud | 500m | 2000m | 1Gi | 2Gi | 100GB+ | File sync and collaboration |
 | | PostgreSQL | 300m | 1000m | 512Mi | 1Gi | 20-50GB | User data, file metadata |
 | | Redis | 100m | 300m | 256Mi | 512Mi | 2GB | File locking, caching |
@@ -31,16 +49,9 @@ Here's a comprehensive table of resource requirements for common self-hosted app
 | | PostgreSQL | 500m | 1000m | 1Gi | 2Gi | 20-50GB | |
 | | Redis | 200m | 500m | 512Mi | 1Gi | 5GB | |
 | | **Total** | **2.7 CPU** | **5.5 CPU** | **5.5Gi** | **11Gi** | **75-155GB** | Very resource-intensive |
-| **Prometheus** | Prometheus | 300m | 1000m | 1.5Gi | 2.5Gi | 40-60GB | Metrics collection and storage (7-day retention) |
-| **Grafana** | Grafana | 200m | 500m | 512Mi | 1Gi | 5-10GB | Visualization dashboards |
 | **Loki** | Loki | 300m | 1000m | 512Mi | 1Gi | 30-50GB | Log aggregation |
 | | Promtail (per node) | 100m | 200m | 128Mi | 256Mi | 1GB | Log shipper agent |
-| **Uptime Kuma** | Uptime Kuma | 100m | 500m | 256Mi | 512Mi | 5GB | Service monitoring, very lightweight |
 | **Traefik** | Traefik | 200m | 500m | 256Mi | 512Mi | 1GB | Ingress controller / reverse proxy |
-| **Nginx Ingress** | Nginx Ingress | 200m | 1000m | 256Mi | 512Mi | 2GB | Alternative ingress controller |
-| **cert-manager** | cert-manager | 100m | 300m | 128Mi | 256Mi | 1GB | Automatic SSL/TLS certificates |
-| **MetalLB** | Controller | 50m | 100m | 64Mi | 128Mi | 500MB | Load balancer controller |
-| | Speaker (per node) | 50m | 100m | 64Mi | 128Mi | 500MB | BGP/Layer 2 announcer |
 | **Frigate** | Frigate | 2000m | 4000m | 2Gi | 4Gi | 100GB+ | AI-powered NVR (per camera ~1GB RAM, no GPU on Pi) |
 | **Paperless-ngx** | Paperless-ngx | 500m | 1500m | 1Gi | 2Gi | 50-100GB | Document management with OCR |
 | | PostgreSQL | 300m | 500m | 512Mi | 1Gi | 20GB | Document metadata |
@@ -89,9 +100,6 @@ Here's a comprehensive table of resource requirements for common self-hosted app
 | **Stirling-PDF** | Stirling-PDF | 300m | 1000m | 512Mi | 1Gi | 5GB | PDF manipulation tools |
 | **IT-Tools** | IT-Tools | 100m | 300m | 128Mi | 256Mi | 1GB | Developer utilities collection |
 | **Changedetection** | Changedetection.io | 100m | 300m | 256Mi | 512Mi | 5GB | Website change monitoring |
-| **n8n** | n8n | 300m | 1000m | 512Mi | 1Gi | 10GB | Workflow automation (like Zapier) |
-| | PostgreSQL | 200m | 500m | 256Mi | 512Mi | 5GB | |
-| | **Total** | **500m** | **1.5 CPU** | **768Mi** | **1.5Gi** | **15GB** | |
 | **Node-RED** | Node-RED | 200m | 1000m | 256Mi | 512Mi | 5GB | Flow-based automation |
 | **Roundcube** | Roundcube | 200m | 500m | 256Mi | 512Mi | 5GB | Webmail client |
 | **Mailu** | Admin | 100m | 300m | 256Mi | 512Mi | 5GB | Email server suite |
@@ -107,6 +115,7 @@ Here's a comprehensive table of resource requirements for common self-hosted app
 | **Restic** | Restic | 200m | 500m | 256Mi | 512Mi | 5GB | Command-line backup tool |
 | **Kopia** | Kopia | 300m | 1000m | 512Mi | 1Gi | 10GB | Modern backup/restore tool |
 | **Watchtower** | Watchtower | 50m | 100m | 64Mi | 128Mi | 500MB | Automatic container updates |
+
 
 ## Notes on Resource Requirements
 
