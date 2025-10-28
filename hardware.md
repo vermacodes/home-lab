@@ -16,8 +16,8 @@ This repository documents the setup and configuration of a 4-node Raspberry Pi K
 | Node     | Model         | RAM  | NVMe SSD | Cooling         | Power Supply |
 |----------|---------------|------|----------|------------------|--------------|
 | cp-1     | Raspberry Pi  | 4GB  | 128GB    | Armor Lite V5    | 27W USB-C    |
-| node-1   | Raspberry Pi  | 8GB  | 256GB    | Raspi Active     | 27W USB-C    |
-| node-2   | Raspberry Pi  | 16GB | 256GB    | Armor Lite V5    | 27W USB-C    |
+| node-1   | Raspberry Pi  | 16GB | 256GB    | Armor Lite V5    | 27W USB-C    |
+| node-2   | Raspberry Pi  | 8GB  | 256GB    | Raspi Active     | 27W USB-C    |
 | node-3   | Raspberry Pi  | 4GB  | 128GB    | Armor Lite V5    | 27W USB-C    |
 
 ## Shared Accessories
