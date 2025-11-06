@@ -14,9 +14,15 @@ This setup automatically toggles Wi-Fi (`wlan0`) based on the connection status 
 
 ---
 
+> [!NOTE]
+> Run all commands below as `root` user. If you want to run as other non-root user prepend `sudo` where applicable.
+
 ### 1. Create the Script
 
-**Path:** `/usr/local/bin/switch-wifi.sh`
+**Path:** 
+```bash
+vim /usr/local/bin/switch-wifi.sh
+```
 
 ```bash
 #!/bin/bash
@@ -47,7 +53,7 @@ fi
 Make it executable:
 
 ```bash
-sudo chmod +x /usr/local/bin/switch-wifi.sh
+chmod +x /usr/local/bin/switch-wifi.sh
 ```
 
 ---
@@ -93,10 +99,10 @@ WantedBy=timers.target
 ### 4. Enable and Start the Timer
 
 ```bash
-sudo systemctl daemon-reexec
-sudo systemctl daemon-reload
-sudo systemctl enable switch-wifi.timer
-sudo systemctl start switch-wifi.timer
+systemctl daemon-reexec
+systemctl daemon-reload
+systemctl enable switch-wifi.timer
+systemctl start switch-wifi.timer
 ```
 
 ---
@@ -128,7 +134,7 @@ cat /var/log/switch-wifi.log
 Run the service manually:
 
 ```bash
-sudo systemctl start switch-wifi.service
+systemctl start switch-wifi.service
 ```
 
 Then check:
