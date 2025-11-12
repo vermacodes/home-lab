@@ -4,12 +4,12 @@ This guide only works if Raspnerry Pi is using [rpi-swap](https://github.com/ras
 
 1. **Create the drop-in directory (if it doesn’t exist):**
    ```bash
-   sudo mkdir -p /etc/rpi/swap.conf.d
+   mkdir -p /etc/rpi/swap.conf.d
    ```
 
 2. **Create a new config file to disable swap:**
    ```bash
-   sudo nano /etc/rpi/swap.conf.d/disable.conf
+   vim /etc/rpi/swap.conf.d/disable.conf
    ```
 
 3. **Add the following content:**
