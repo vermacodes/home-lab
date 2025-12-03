@@ -18,7 +18,7 @@ This guide only works if Raspnerry Pi is using [rpi-swap](https://github.com/ras
    Mechanism=none
    ```
 
-4. **Save and exit** (`Ctrl+O`, `Enter`, `Ctrl+X`)
+4. **Save and exit**
 
 ---
 
