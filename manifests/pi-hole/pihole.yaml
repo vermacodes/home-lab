@@ -320,7 +320,7 @@ kind: CronJob
 metadata:
   name: pi-hole-sync
 spec:
-  schedule: "*/15 * * * *"
+  schedule: "0 * * * *"
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 1
   jobTemplate:
