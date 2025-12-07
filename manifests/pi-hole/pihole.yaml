@@ -88,30 +88,30 @@ spec:
         - containerPort: 53
           name: dns-udp
           protocol: UDP
-      - name: exporter
-        image: ekofr/pihole-exporter:v1.2.0
-        env:
-          - name: PIHOLE_HOSTNAME
-            value: "pi-hole-rw-0.pi-hole.pi-hole.svc.cluster.local,pi-hole-ro-0.pi-hole.pi-hole.svc.cluster.local,pi-hole-ro-1.pi-hole.pi-hole.svc.cluster.local"
-          - name: PIHOLE_PORT
-            value: "80,80,80"
-          - name: PIHOLE_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: pi-hole-credentials
-                key: exporter-password
-          - name: DEBUG
-            value: "true"
-        resources:
-          limits:
-            memory: 128Mi
-          requests:
-            cpu: 50m
-            memory: 128Mi
-        ports:
-          - containerPort: 9617
-            name: prometheus
-            protocol: TCP
+      # - name: exporter
+      #   image: ekofr/pihole-exporter:v1.2.0
+      #   env:
+      #     - name: PIHOLE_HOSTNAME
+      #       value: "pi-hole-rw-0.pi-hole.pi-hole.svc.cluster.local,pi-hole-ro-0.pi-hole.pi-hole.svc.cluster.local,pi-hole-ro-1.pi-hole.pi-hole.svc.cluster.local"
+      #     - name: PIHOLE_PORT
+      #       value: "80,80,80"
+      #     - name: PIHOLE_PASSWORD
+      #       valueFrom:
+      #         secretKeyRef:
+      #           name: pi-hole-credentials
+      #           key: exporter-password
+      #     - name: DEBUG
+      #       value: "true"
+      #   resources:
+      #     limits:
+      #       memory: 128Mi
+      #     requests:
+      #       cpu: 50m
+      #       memory: 128Mi
+      #   ports:
+      #     - containerPort: 9617
+      #       name: prometheus
+      #       protocol: TCP
       securityContext:
         fsGroup: 1000
         fsGroupChangePolicy: "OnRootMismatch"
@@ -217,25 +217,6 @@ spec:
   - port: 80
     targetPort: http
     name: http
----
-# Service to expose the exporter port
-apiVersion: v1
-kind: Service
-metadata:
-  name: pihole-exporter
-  namespace: pi-hole
-  labels:
-    app.kubernetes.io/name: pi-hole
-    pi.hole/role: read-write
-spec:
-  selector:
-    app.kubernetes.io/name: pi-hole
-    pi.hole/role: read-write
-  ports:
-  - port: 9617
-    targetPort: 9617
-    protocol: TCP
-    name: prometheus
 ---
 # Read only StatefulSet for Pi-hole
 apiVersion: apps/v1
@@ -348,22 +329,3 @@ spec:
             - name: NS_DEBUG
               value: 'true'
           restartPolicy: OnFailure
----
-# Debug only service to access read-only Pi-hole pods
-# apiVersion: v1
-# kind: Service
-# metadata:
-#   name: pi-hole-web-ro
-#   labels: 
-#     app.kubernetes.io/name: pi-hole
-#     pi.hole/role: read-only
-# spec:
-#   type: LoadBalancer
-#   sessionAffinity: ClientIP
-#   ports:
-#   - port: 80
-#     targetPort: http
-#     name: http
-#   selector:
-#     app.kubernetes.io/name: pi-hole
-#     pi.hole/role: read-only

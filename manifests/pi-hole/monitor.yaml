@@ -1,9 +1,69 @@
+# exporter deployment for Pi-hole metrics
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pihole-metrics-exporter
+  namespace: pi-hole
+  labels:
+    app.kubernetes.io/name: pihole-metrics-exporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: pihole-metrics-exporter
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: pihole-metrics-exporter
+    spec:
+      containers:
+      - name: pihole-metrics-exporter
+        image: ekofr/pihole-exporter:v1.2.0
+        env:
+          - name: PIHOLE_HOSTNAME
+            value: "pi-hole-rw-0.pi-hole.pi-hole.svc.cluster.local,pi-hole-ro-0.pi-hole.pi-hole.svc.cluster.local,pi-hole-ro-1.pi-hole.pi-hole.svc.cluster.local"
+          - name: PIHOLE_PORT
+            value: "80,80,80"
+          - name: PIHOLE_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: pi-hole-credentials
+                key: exporter-password
+          - name: DEBUG
+            value: "true"
+        resources:
+          limits:
+            memory: 128Mi
+          requests:
+            cpu: 50m
+            memory: 128Mi
+        ports:
+          - containerPort: 9617
+            name: prometheus
+            protocol: TCP
+---
+# Service to expose the exporter port
+apiVersion: v1
+kind: Service
+metadata:
+  name: pihole-metrics-exporter
+  namespace: pi-hole
+  labels:
+    app.kubernetes.io/name: pihole-metrics-exporter
+spec:
+  selector:
+    app.kubernetes.io/name: pihole-metrics-exporter
+  ports:
+  - port: 9617
+    targetPort: 9617
+    protocol: TCP
+    name: prometheus
 ---
 # ServiceMonitor for Pi-hole exporter metrics
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: pihole-exporter
+  name: pihole-metrics-exporter
   namespace: monitoring
   labels:
     app.kubernetes.io/name: pi-hole
@@ -20,5 +80,4 @@ spec:
     - pi-hole
   selector:
     matchLabels:
-      app.kubernetes.io/name: pi-hole
-      pi.hole/role: read-write
+      app.kubernetes.io/name: pihole-metrics-exporter
