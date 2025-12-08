@@ -72,8 +72,9 @@ metadata:
 spec:
   endpoints:
   - port: prometheus
-    interval: 30s
+    interval: 60s
     path: /metrics
+    scrapeTimeout: 30s
   jobLabel: app.kubernetes.io/name
   namespaceSelector:
     matchNames:
