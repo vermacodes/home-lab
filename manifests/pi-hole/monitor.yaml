@@ -74,7 +74,7 @@ spec:
   - port: prometheus
     interval: 60s
     path: /metrics
-    scrapeTimeout: 30s
+    scrapeTimeout: 55s
   jobLabel: app.kubernetes.io/name
   namespaceSelector:
     matchNames:
