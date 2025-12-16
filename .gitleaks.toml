@@ -1,0 +1,68 @@
+title = "Gitleaks Balanced Sensitivity"
+
+# Only flag high-entropy strings that look like real secrets (not variable names)
+[[rules]]
+id = "high-entropy-string"
+description = "High entropy string detected"
+regex = '''["']([A-Za-z0-9@#$%^&*!_+\-=]{20,})["']'''
+entropy = 3.8
+secretGroup = 1
+
+# Assignment with actual quoted values (not variables)
+[[rules]]
+id = "sensitive-var-assignment"
+description = "Assignment to sensitive variable with quoted value"
+regex = '''(?i)(password|passwd|pwd|secret|token|key|api|auth|credential|access)\s*[:=]\s*["']([^$"'\s]{8,})["']'''
+secretGroup = 2
+
+# Environment variable exports with quoted values (not $VAR references)
+[[rules]]
+id = "env-export"
+description = "Environment variable export with literal value"
+regex = '''(?i)export\s+\w*?(PASSWORD|SECRET|TOKEN|KEY|API|AUTH|CREDENTIAL)\w*?\s*=\s*["']([^$"'\s]{8,})["']'''
+secretGroup = 2
+
+# YAML/JSON with quoted literal values
+[[rules]]
+id = "yaml-secret"
+description = "YAML/JSON secret with literal value"
+regex = '''(?i)(password|secret|token|key|api_key|apikey|access_key|auth_token)\s*:\s*["']([^$"'\s]{8,})["']'''
+secretGroup = 2
+
+# Known secret formats (AWS, GitHub, Stripe, etc.)
+[[rules]]
+id = "aws-access-key"
+description = "AWS Access Key"
+regex = '''AKIA[0-9A-Z]{16}'''
+
+[[rules]]
+id = "github-token"
+description = "GitHub Token"
+regex = '''ghp_[a-zA-Z0-9]{36}'''
+
+[[rules]]
+id = "slack-webhook"
+description = "Slack Webhook"
+regex = '''https://hooks\.slack\.com/services/[A-Z0-9/]+'''
+
+[[rules]]
+id = "private-key"
+description = "Private Key"
+regex = '''-----BEGIN[ A-Z]*PRIVATE KEY-----'''
+
+[allowlist]
+description = "Exclude safe patterns"
+
+# Ignore variable references and common safe patterns
+regexes = [
+  '''example''',
+  '''changeme''',
+  '''your-.*-here''',
+  '''<.*>''',
+  '''\*\*\*\*''',
+  '''xxx''',
+  '''test123''',
+  '''\$\{.*\}''',      # ${VAR} references
+  '''\$[A-Z_]+''',     # $VAR references
+  '''password: \$password''',  # jq style variable usage
+]

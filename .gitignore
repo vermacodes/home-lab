@@ -1,0 +1,8 @@
+# Test files
+test-secret.*
+*.test
+*.tmp
+
+# Gitleaks reports
+gitleaks-report.json
+gitleaks.log
