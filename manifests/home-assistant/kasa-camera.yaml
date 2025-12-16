@@ -1,0 +1,146 @@
+# ConfigMap for go2rtc configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: go2rtc-config
+  namespace: home-assistant
+data:
+  go2rtc.yaml: |
+    api:
+      listen: ":1984"
+      username: ${API_USERNAME}
+      password: ${API_PASSWORD}
+    
+    rtsp:
+      listen: ":8554"
+      username: ${RTSP_USERNAME}
+      password: ${RTSP_PASSWORD}
+    
+    webrtc:
+      listen: ":8555"
+    
+    streams:
+      babycam: "kasa://${KASA_USERNAME_URLENCODED}:${KASA_PASSWORD_BASE64}@kc410s.home.local:19443/https/stream/mixed"
+---
+# Deployment for go2rtc
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: go2rtc
+  namespace: home-assistant
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: go2rtc
+  template:
+    metadata:
+      labels:
+        app: go2rtc
+    spec:
+      containers:
+      - name: go2rtc
+        image: alexxit/go2rtc:latest
+        env:
+        - name: API_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: go2rtc-credentials
+              key: api-username
+        - name: API_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: go2rtc-credentials
+              key: api-password
+        - name: RTSP_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: go2rtc-credentials
+              key: rtsp-username
+        - name: RTSP_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: go2rtc-credentials
+              key: rtsp-password
+        ports:
+        - containerPort: 1984
+          name: http
+        - containerPort: 8554
+          name: rtsp
+        - containerPort: 8555
+          name: webrtc
+        volumeMounts:
+        - name: config
+          mountPath: /config
+        resources:
+          requests:
+            memory: 256Mi
+            cpu: 200m
+          limits:
+            memory: 512Mi
+            cpu: 500m
+      volumes:
+      - name: config
+        configMap:
+          name: go2rtc-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: go2rtc
+  namespace: home-assistant
+spec:
+  selector:
+    app: go2rtc
+  ports:
+  - name: http
+    port: 1984
+    targetPort: 1984
+  - name: rtsp
+    port: 8554
+    targetPort: 8554
+  - name: webrtc
+    port: 8555
+    targetPort: 8555
+  type: ClusterIP
+---
+# HTTPRoute for go2rtc web interface
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: go2rtc-https-route
+  namespace: home-assistant
+spec:
+  hostnames:
+  - go2rtc.ashishverma.dev
+  parentRefs:
+  - name: envoy
+    namespace: envoy-gateway-system
+    sectionName: https
+  rules:
+  - backendRefs:
+    - group: ""
+      kind: Service
+      name: go2rtc
+      port: 1984
+      weight: 1
+    matches:
+    - path:
+        type: PathPrefix
+        value: /
+---
+# TCPRoute for RTSP streaming
+apiVersion: gateway.networking.k8s.io/v1alpha2
+kind: TCPRoute
+metadata:
+  name: go2rtc-rtsp-route
+  namespace: home-assistant
+spec:
+  parentRefs:
+  - name: envoy
+    namespace: envoy-gateway-system
+    sectionName: rtsp
+  rules:
+  - backendRefs:
+    - name: go2rtc
+      port: 8554

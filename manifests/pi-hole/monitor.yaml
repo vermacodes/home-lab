@@ -18,7 +18,8 @@ spec:
     spec:
       containers:
       - name: pihole-metrics-exporter
-        image: ekofr/pihole-exporter:v1.2.0
+        image: ashishvermapu/pihole-exporter
+        imagePullPolicy: Always
         env:
           - name: PIHOLE_HOSTNAME
             value: "pi-hole-rw-0.pi-hole.pi-hole.svc.cluster.local,pi-hole-ro-0.pi-hole.pi-hole.svc.cluster.local,pi-hole-ro-1.pi-hole.pi-hole.svc.cluster.local"
@@ -82,3 +83,58 @@ spec:
   selector:
     matchLabels:
       app.kubernetes.io/name: pihole-metrics-exporter
+# ServiceMonitor for frequent metrics (1m interval)
+# apiVersion: monitoring.coreos.com/v1
+# kind: ServiceMonitor
+# metadata:
+#   name: pihole-metrics-exporter-frequent
+#   namespace: monitoring
+#   labels:
+#     app.kubernetes.io/name: pi-hole
+#     app.kubernetes.io/component: exporter
+#     app.kubernetes.io/part-of: kube-prometheus
+# spec:
+#   endpoints:
+#   - port: prometheus
+#     interval: 60s
+#     path: /metrics
+#     scrapeTimeout: 55s
+#     metricRelabelings:
+#     - sourceLabels: [__name__]
+#       regex: 'pihole_window.*'
+#       action: drop  # Drop window metrics from frequent scrapes
+#   jobLabel: app.kubernetes.io/name
+#   namespaceSelector:
+#     matchNames:
+#     - pi-hole
+#   selector:
+#     matchLabels:
+#       app.kubernetes.io/name: pihole-metrics-exporter
+# ---
+# # ServiceMonitor for window metrics (10m interval)
+# apiVersion: monitoring.coreos.com/v1
+# kind: ServiceMonitor
+# metadata:
+#   name: pihole-metrics-exporter-windows
+#   namespace: monitoring
+#   labels:
+#     app.kubernetes.io/name: pi-hole
+#     app.kubernetes.io/component: exporter
+#     app.kubernetes.io/part-of: kube-prometheus
+# spec:
+#   endpoints:
+#   - port: prometheus
+#     interval: 10m
+#     path: /metrics
+#     scrapeTimeout: 55s
+#     metricRelabelings:
+#     - sourceLabels: [__name__]
+#       regex: 'pihole_window.*'
+#       action: keep  # Only keep window metrics
+#   jobLabel: app.kubernetes.io/name
+#   namespaceSelector:
+#     matchNames:
+#     - pi-hole
+#   selector:
+#     matchLabels:
+#       app.kubernetes.io/name: pihole-metrics-exporter
