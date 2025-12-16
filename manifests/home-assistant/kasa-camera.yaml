@@ -16,9 +16,6 @@ data:
       username: ${RTSP_USERNAME}
       password: ${RTSP_PASSWORD}
     
-    webrtc:
-      listen: ":8555"
-    
     streams:
       babycam: "kasa://${KASA_USERNAME_URLENCODED}:${KASA_PASSWORD_BASE64}@kc410s.home.local:19443/https/stream/mixed"
 ---
@@ -62,13 +59,21 @@ spec:
             secretKeyRef:
               name: go2rtc-credentials
               key: rtsp-password
+        - name: KASA_USERNAME_URLENCODED
+          valueFrom:
+            secretKeyRef:
+              name: go2rtc-credentials
+              key: kasa-username-urlencoded
+        - name: KASA_PASSWORD_BASE64
+          valueFrom:
+            secretKeyRef:
+              name: go2rtc-credentials
+              key: kasa-password-base64
         ports:
         - containerPort: 1984
           name: http
         - containerPort: 8554
           name: rtsp
-        - containerPort: 8555
-          name: webrtc
         volumeMounts:
         - name: config
           mountPath: /config
@@ -99,9 +104,6 @@ spec:
   - name: rtsp
     port: 8554
     targetPort: 8554
-  - name: webrtc
-    port: 8555
-    targetPort: 8555
   type: ClusterIP
 ---
 # HTTPRoute for go2rtc web interface
