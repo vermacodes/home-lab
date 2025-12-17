@@ -94,6 +94,9 @@ kind: Service
 metadata:
   name: go2rtc
   namespace: home-assistant
+  annotations:
+    tailscale.com/expose: "true"
+    tailscale.com/hostname: "go2rtc"
 spec:
   selector:
     app: go2rtc
