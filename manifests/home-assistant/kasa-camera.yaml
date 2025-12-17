@@ -17,7 +17,7 @@ data:
       password: ${RTSP_PASSWORD}
     
     streams:
-      babycam: "kasa://${KASA_USERNAME_URLENCODED}:${KASA_PASSWORD_BASE64}@kc410s.home.local:19443/https/stream/mixed"
+      babycam: "kasa://${KASA_USERNAME_URLENCODED}:${KASA_PASSWORD_BASE64}@kc410s:19443/https/stream/mixed"
 ---
 # Deployment for go2rtc
 apiVersion: apps/v1
