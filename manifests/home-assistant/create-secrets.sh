@@ -20,6 +20,9 @@ fi
 
 export BW_SESSION
 
+# Sync
+bw sync
+
 # Retrieve go2rtc credentials from BitWarden
 API_USERNAME=$(bw get username go2rtc-credentials)
 API_PASSWORD=$(bw get password go2rtc-credentials)
@@ -27,6 +30,8 @@ KASA_USERNAME=$(bw get username kasasmart.com)
 KASA_USERNAME_URLENCODED=$(echo -n "$KASA_USERNAME" | jq -s -R -r @uri)
 KASA_PASSWORD=$(bw get password kasasmart.com)
 KASA_PASSWORD_BASE64=$(echo -n "$KASA_PASSWORD" | base64)
+
+THREAD_DATASET_HEX=$(bw get password 'thread-dataset-hex')
 
 # Retrieve home-assistant credentials
 HA_PASSWORD=$(bw get password 'home assistant')
@@ -56,5 +61,9 @@ kubectl create secret generic go2rtc-credentials \
 
 echo "Secret 'go2rtc-credentials' created successfully in namespace 'home-assistant'"
 
+kubectl delete secret thread-dataset-hex -n home-assistant --ignore-not-found
+kubectl create secret generic thread-dataset-hex \
+  --from-literal=thread-dataset-hex="${THREAD_DATASET_HEX}" \
+  -n home-assistant
 # Unset the session token for security
 unset BW_SESSION
