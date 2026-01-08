@@ -76,17 +76,11 @@ hostNetwork: true
 
 # Set the dnsPolicy (you'll want ClusterFirstWithHostNet if running on hostNetwork to reac
 # other k8s services via DNS
-# dnsPolicy: ClusterFirst
+dnsPolicy: ClusterFirstWithHostNet
 
 # Container security context settings
 securityContext:
-  {}
-  # capabilities:
-  #   drop:
-  #   - ALL
-  # readOnlyRootFilesystem: true
-  # runAsNonRoot: true
-  # runAsUser: 1000
+  privileged: true
 
 # Pod's DNS Configuration
 # https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-dns-config
@@ -147,7 +141,8 @@ resources:
   #   memory: 128Mi
 
 # Node selector settings for scheduling the pod on specific nodes
-nodeSelector: {}
+nodeSelector:
+  kubernetes.io/hostname: node-2
 
 # Tolerations settings for scheduling the pod based on node taints
 tolerations: []
@@ -184,6 +179,8 @@ configuration:
   # Here is the list of the most common private IP ranges, use your list of possible trusted proxies, usually, it's the IP of the reverse proxy
   trusted_proxies:
     - 192.168.0.0/24
+    - 10.0.0.0/24
+    - 10.200.0.0/16
   # Template for the configuration.yaml file
   # Used the `tpl` function to render the template, so you can use Go template functions
   templateConfig: |-
@@ -308,22 +305,22 @@ persistence:
   matchExpressions: {}
 
 # if you need any additional volumes, you can define them here
-additionalVolumes: []
+additionalVolumes:
   # - name: custom-components
   #   emptyDir: {}
 
-  # - hostPath:
-  #     path: >-
-  #       /dev/serial/by-id/usb-Silicon_Labs_Sonoff_Zigbee_3.0_USB_Dongle_Plus_0001-if00-port0
-  #     type: CharDevice
-  #   name: usb
+  - hostPath:
+      path: >-
+        /dev/serial/by-id/usb-SONOFF_SONOFF_Dongle_Lite_MG21_5a727e01e59bef11b76bb89061ce3355-if00-port0
+      type: CharDevice
+    name: usb
 # if you need any additional volume mounts, you can define them here
-additionalMounts: []
+additionalMounts:
   # - mountPath: /config/custom_components/panasonic_cc
   #   name: custom-components
 
-  # - mountPath: /dev/ttyACM0
-  #   name: usb
+  - mountPath: /dev/ttyUSB1
+    name: usb
 
 # if you need to expose additional ports
 additionalPorts: []
