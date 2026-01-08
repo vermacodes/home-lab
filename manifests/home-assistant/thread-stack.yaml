@@ -259,6 +259,42 @@ spec:
           value: /data
         - name: CHIP_ROOT_CA_PATH
           value: /data
+        startupProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - |
+              STATE=$(curl -s http://localhost:8081/node/state 2>/dev/null | tr -d '"' | tr -d '\r\n ')
+              case "$STATE" in
+                leader|router|child)
+                  exit 0
+                  ;;
+                *)
+                  exit 1
+                  ;;
+              esac
+          failureThreshold: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - |
+              STATE=$(curl -s http://localhost:8081/node/state 2>/dev/null | tr -d '"' | tr -d '\r\n ')
+              case "$STATE" in
+                leader|router|child)
+                  exit 0
+                  ;;
+                *)
+                  exit 1
+                  ;;
+              esac
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
         livenessProbe:
           tcpSocket:
             port: 5580
