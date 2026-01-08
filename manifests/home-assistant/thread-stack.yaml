@@ -1,0 +1,320 @@
+---
+# ConfigMap containing restore script and non-sensitive configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otbr-restore-script
+  namespace: home-assistant
+data:
+  # Fixed extended address (MAC) for border router consistency
+  otbr-extaddr.txt: |
+    5a7e485747e99f2d
+  
+  # Restore script that runs on container startup
+  restore-thread.sh: |
+    #!/bin/bash
+    set -e
+    
+    # Log to both stdout and a file
+    LOGFILE="/var/lib/thread/thread-restore.log"
+    exec > >(tee -a "$LOGFILE") 2>&1
+    
+    echo "========================================="
+    echo "[Thread Restore] $(date)"
+    echo "========================================="
+    echo "[Thread Restore] Waiting for otbr-agent to initialize..."
+    sleep 10
+    
+    # Check if Thread network is already active
+    STATE=$(ot-ctl state 2>/dev/null || echo "error")
+    
+    if [[ "$STATE" == "leader" || "$STATE" == "router" || "$STATE" == "child" ]]; then
+      echo "[Thread Restore] Thread network already active (state: $STATE)"
+      exit 0
+    fi
+    
+    echo "[Thread Restore] Thread network not active (state: $STATE), restoring..."
+    
+    # Set the fixed extended address BEFORE loading dataset
+    # This only works when Thread is in disabled state
+    FIXED_EXTADDR=$(cat /scripts/otbr-extaddr.txt | tr -d '\n' | tr -d ' ')
+    echo "[Thread Restore] Setting fixed extended address: $FIXED_EXTADDR"
+    ot-ctl extaddr "$FIXED_EXTADDR" 2>/dev/null || echo "[Thread Restore] Warning: Could not set extaddr (may already be set)"
+    
+    # Read and restore dataset
+    DATASET=$(cat /secrets/thread-dataset-hex | tr -d '\n' | tr -d ' ')
+    
+    # Validate dataset is not empty
+    if [ -z "$DATASET" ]; then
+      echo "[Thread Restore] ERROR: Thread dataset is empty!"
+      echo "[Thread Restore] Run create-secrets.sh to create the thread-dataset-hex secret"
+      exit 1
+    fi
+    
+    echo "[Thread Restore] Loading Thread dataset..."
+    if ! ot-ctl dataset set active "$DATASET"; then
+      echo "[Thread Restore] ERROR: Failed to load Thread dataset (InvalidArgs - check dataset format)"
+      exit 1
+    fi
+    
+    echo "[Thread Restore] Bringing up Thread interface..."
+    ot-ctl ifconfig up
+    
+    echo "[Thread Restore] Starting Thread network..."
+    ot-ctl thread start
+    
+    # Verify restoration was successful with retry and backoff
+    echo "[Thread Restore] Waiting for Thread network to reach active state..."
+    RETRIES=3
+    SUCCESS=false
+    
+    for i in 1 2 3; do
+      if [ $i -eq 1 ]; then
+        DELAY=5
+      elif [ $i -eq 2 ]; then
+        DELAY=10
+      else
+        DELAY=15
+      fi
+      
+      echo "[Thread Restore] Attempt $i/$RETRIES: Waiting ${DELAY}s..."
+      sleep $DELAY
+      
+      # Get state and trim output (use head to get first line, tr to remove all whitespace)
+      NEW_STATE=$(ot-ctl state 2>&1 | head -1 | tr -d '\r\n ')
+      NETWORK_NAME=$(ot-ctl networkname 2>&1 | head -1 | tr -d '\r\n ')
+      CURRENT_EXTADDR=$(ot-ctl extaddr 2>&1 | head -1 | tr -d '\r\n ')
+      
+      echo "[Thread Restore] Network: $NETWORK_NAME"
+      echo "[Thread Restore] State: $NEW_STATE"
+      echo "[Thread Restore] Extended Address: $CURRENT_EXTADDR"
+      
+      # Check if we're in a valid state
+      case "$NEW_STATE" in
+        leader|router|child)
+          SUCCESS=true
+          break
+          ;;
+        *)
+          echo "[Thread Restore] Still waiting (state: $NEW_STATE)..."
+          ;;
+      esac
+    done
+    
+    if [ "$SUCCESS" = "false" ]; then
+      echo "[Thread Restore] ERROR: Thread network failed to reach active state after $RETRIES attempts (final state: $NEW_STATE)"
+      echo "========================================="
+      exit 1
+    fi
+    
+    echo "[Thread Restore] Thread network restored successfully!"
+    echo "========================================="
+    
+    exit 0
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: thread-stack
+  namespace: home-assistant
+  labels:
+    app: thread-stack
+spec:
+  serviceName: thread-stack
+  replicas: 1
+  selector:
+    matchLabels:
+      app: thread-stack
+  template:
+    metadata:
+      labels:
+        app: thread-stack
+    spec:
+      hostNetwork: true
+      hostPID: true
+      dnsPolicy: ClusterFirstWithHostNet
+      nodeSelector:
+        kubernetes.io/hostname: node-2
+      
+      containers:
+      # OpenThread Border Router Container
+      - name: otbr
+        image: openthread/otbr:latest
+        ports:
+        - name: web
+          containerPort: 30080
+          protocol: TCP
+        - name: rest
+          containerPort: 30081
+          protocol: TCP
+        resources:
+          requests:
+            memory: 256Mi
+            cpu: 100m
+          limits:
+            memory: 512Mi
+            cpu: 500m
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: otbr-data
+          mountPath: /var/lib/thread
+        - name: usb-dongle
+          mountPath: /dev/ttyUSB0
+        - name: lib-modules
+          mountPath: /lib/modules
+          readOnly: true
+        - name: sys
+          mountPath: /sys
+        - name: thread-restore-script
+          mountPath: /scripts
+        - name: thread-dataset-secret
+          mountPath: /secrets
+          readOnly: true
+        env:
+        - name: HTTP_PORT
+          value: "30080"
+        - name: FIREWALL
+          value: "0"
+        - name: RADIO_URL
+          value: "spinel+hdlc+uart:///dev/ttyUSB0?uart-baudrate=460800"
+        - name: INFRA_IF_NAME
+          value: "eth0"
+        - name: BORDER_ROUTING
+          value: "1"
+        - name: BACKBONE_ROUTER
+          value: "1"
+        - name: OT_REST_LISTEN_ADDR
+          value: "0.0.0.0"
+        - name: OT_REST_LISTEN_PORT
+          value: "30081"
+        - name: DBUS_SYSTEM_BUS_ADDRESS
+          value: "unix:path=/var/run/dbus/system_bus_socket"
+        readinessProbe:
+          exec:
+            command:
+            - /bin/bash
+            - -c
+            - |
+              STATE=$(ot-ctl state 2>&1 | head -1 | tr -d '\r\n ')
+              case "$STATE" in
+                leader|router|child)
+                  exit 0
+                  ;;
+                *)
+                  echo "Thread not ready: $STATE"
+                  exit 1
+                  ;;
+              esac
+          initialDelaySeconds: 20
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        livenessProbe:
+          exec:
+            command:
+            - /bin/bash
+            - -c
+            - |
+              STATE=$(ot-ctl state 2>&1 | head -1 | tr -d '\r\n ')
+              if [ -n "$STATE" ] && [ "$STATE" != "error" ]; then
+                exit 0
+              else
+                exit 1
+              fi
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+        lifecycle:
+          postStart:
+            exec:
+              command:
+              - /bin/bash
+              - /scripts/restore-thread.sh
+      
+      # Matter Server Container
+      - name: matter-server
+        image: ghcr.io/home-assistant-libs/python-matter-server:stable
+        resources:
+          requests:
+            memory: 256Mi
+            cpu: 100m
+          limits:
+            memory: 512Mi
+            cpu: 500m
+        securityContext:
+          privileged: true
+          capabilities:
+            add:
+            - NET_ADMIN
+            - NET_RAW
+        volumeMounts:
+        - name: matter-data
+          mountPath: /data
+        - name: dbus
+          mountPath: /var/run/dbus
+        env:
+        - name: MATTER_SERVER_STORAGE
+          value: /data
+        - name: CHIP_ROOT_CA_PATH
+          value: /data
+        livenessProbe:
+          tcpSocket:
+            port: 5580
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+      
+      volumes:
+      - name: usb-dongle
+        hostPath:
+          path: /dev/serial/by-id/usb-SONOFF_SONOFF_Dongle_Lite_MG21_0aedd6b86a8bef11a3642bccef8776e9-if00-port0
+          type: CharDevice
+      - name: lib-modules
+        hostPath:
+          path: /lib/modules
+          type: Directory
+      - name: sys
+        hostPath:
+          path: /sys
+          type: Directory
+      - name: dbus
+        hostPath:
+          path: /var/run/dbus
+          type: Directory
+      - name: thread-restore-script
+        configMap:
+          name: otbr-restore-script
+          defaultMode: 0755
+      - name: thread-dataset-secret
+        secret:
+          secretName: thread-dataset-hex
+          items:
+          - key: thread-dataset-hex
+            path: thread-dataset-hex
+  
+  volumeClaimTemplates:
+  - metadata:
+      name: otbr-data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      storageClassName: longhorn-static
+      resources:
+        requests:
+          storage: 100Mi
+      # Bind to original PV from Deployment (contains Thread network data)
+      volumeName: otbr-data
+  - metadata:
+      name: matter-data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      storageClassName: longhorn-static
+      resources:
+        requests:
+          storage: 100Mi
+      # Bind to original PV from Deployment (contains Matter server data)
+      volumeName: matter-server-data
