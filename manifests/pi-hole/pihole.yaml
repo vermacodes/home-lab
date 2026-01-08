@@ -181,19 +181,19 @@ metadata:
     tailscale.com/expose: "true"
     tailscale.com/hostname: "pihole-dns"
     metallb.io/address-pool: "dns"
-spec:
-  type: LoadBalancer
-  ports:
-  - port: 53
-    targetPort: 53
-    protocol: TCP
-    name: dns-tcp
-  - port: 53
-    targetPort: 53
-    protocol: UDP
-    name: dns-udp
-  selector:
-    app.kubernetes.io/name: pi-hole
+  spec:
+    type: LoadBalancer
+    ports:
+    - port: 53
+      targetPort: 53
+      protocol: TCP
+      name: dns-tcp
+    - port: 53
+      targetPort: 53
+      protocol: UDP
+      name: dns-udp
+    selector:
+      app.kubernetes.io/name: pi-hole
 ---
 # Service for the read-write Pi-hole StatefulSet
 apiVersion: v1
