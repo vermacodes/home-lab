@@ -1,3 +1,18 @@
+# Backend timeout policy for Home Assistant
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: BackendTrafficPolicy
+metadata:
+  name: home-assistant-timeout
+  namespace: home-assistant
+spec:
+  targetRefs:
+  - group: gateway.networking.k8s.io
+    kind: HTTPRoute
+    name: home-assistant-https-route
+  timeout:
+    http:
+      requestTimeout: 5m  # 5 minutes for ZHA setup
+---
 # HTTPRoute for Home Assistant web interface (external HTTPS)
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
@@ -22,6 +37,23 @@ spec:
     - path:
         type: PathPrefix
         value: /
+---
+# Tailscale Ingress for Pi-hole admin interface
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ha-tailscale-ingress
+  namespace: home-assistant
+spec:
+  defaultBackend:
+    service:
+      name: home-assistant
+      port:
+        number: 8080
+  ingressClassName: tailscale
+  tls:
+    - hosts:
+        - ha
 ---
 # HTTPRoute for Home Assistant code-server (external HTTPS)
 apiVersion: gateway.networking.k8s.io/v1
