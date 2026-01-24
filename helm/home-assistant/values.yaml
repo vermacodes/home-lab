@@ -314,13 +314,20 @@ additionalVolumes:
         /dev/serial/by-id/usb-SONOFF_SONOFF_Dongle_Lite_MG21_5a727e01e59bef11b76bb89061ce3355-if00-port0
       type: CharDevice
     name: usb
+  
+  - name: media
+    persistentVolumeClaim:
+      claimName: home-assistant-media
 # if you need any additional volume mounts, you can define them here
 additionalMounts:
   # - mountPath: /config/custom_components/panasonic_cc
   #   name: custom-components
 
-  - mountPath: /dev/ttyUSB1
+  - mountPath: /dev/ttyUSB2
     name: usb
+    
+  - mountPath: /media
+    name: media
 
 # if you need to expose additional ports
 additionalPorts: []
