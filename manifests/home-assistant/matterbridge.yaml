@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: matterbridge
+  namespace: home-assistant
+spec:
+  serviceName: matterbridge
+  replicas: 1
+  selector:
+    matchLabels:
+      app: matterbridge
+  template:
+    metadata:
+      labels:
+        app: matterbridge
+    spec:
+      hostNetwork: true
+      hostPID: true
+      dnsPolicy: ClusterFirstWithHostNet
+      nodeSelector:
+        kubernetes.io/hostname: node-2
+      containers:
+      - name: matterbridge
+        image: luligu/matterbridge:latest
+        ports:
+        - containerPort: 8283
+          name: http
+        volumeMounts:
+        - name: matterbridge-data
+          mountPath: /root
+        securityContext:
+          privileged: true
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+      volumes:
+      - name: matterbridge-data
+        persistentVolumeClaim:
+          claimName: matterbridge-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: matterbridge
+  namespace: home-assistant
+spec:
+  selector:
+    app: matterbridge
+  ports:
+  - port: 8283
+    targetPort: 8283
+    name: http
+  type: ClusterIP
+---
+# HTTPRoute for Matterbridge web interface (external HTTPS)
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: matterbridge-https-route
+  namespace: home-assistant
+spec:
+  hostnames:
+  - matterbridge.ashishverma.dev
+  parentRefs:
+  - name: envoy
+    namespace: envoy-gateway-system
+    sectionName: https
+  rules:
+  - backendRefs:
+    - group: ""
+      kind: Service
+      name: matterbridge
+      port: 8283
+      weight: 1
+    matches:
+    - path:
+        type: PathPrefix
+        value: /
