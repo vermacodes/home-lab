@@ -5,17 +5,7 @@ metadata:
   name: go2rtc-config
   namespace: home-assistant
 data:
-  go2rtc.yaml: |
-    api:
-      listen: ":1984"
-      username: ${API_USERNAME}
-      password: ${API_PASSWORD}
-    
-    rtsp:
-      listen: ":8554"
-      username: ${RTSP_USERNAME}
-      password: ${RTSP_PASSWORD}
-    
+  go2rtc.yaml: |    
     streams:
       babycam: "kasa://${KASA_USERNAME_URLENCODED}:${KASA_PASSWORD_BASE64}@kc410s:19443/https/stream/mixed"
 ---
@@ -39,26 +29,6 @@ spec:
       - name: go2rtc
         image: alexxit/go2rtc:latest
         env:
-        - name: API_USERNAME
-          valueFrom:
-            secretKeyRef:
-              name: go2rtc-credentials
-              key: api-username
-        - name: API_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: go2rtc-credentials
-              key: api-password
-        - name: RTSP_USERNAME
-          valueFrom:
-            secretKeyRef:
-              name: go2rtc-credentials
-              key: rtsp-username
-        - name: RTSP_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: go2rtc-credentials
-              key: rtsp-password
         - name: KASA_USERNAME_URLENCODED
           valueFrom:
             secretKeyRef:
