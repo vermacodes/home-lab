@@ -15,6 +15,8 @@ kind: Gateway
 metadata:
   name: envoy
   namespace: envoy-gateway-system
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-production
 spec:
   gatewayClassName: envoy
   listeners:
@@ -25,6 +27,7 @@ spec:
         namespaces:
           from: All
     - name: https
+      hostname: "*.ashishverma.dev"
       protocol: HTTPS
       port: 443
       allowedRoutes:
@@ -37,6 +40,15 @@ spec:
     - name: rtsp
       protocol: TCP
       port: 8554
+      allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels:
+              kubernetes.io/metadata.name: home-assistant
+    - name: mqtt
+      protocol: TCP
+      port: 1883
       allowedRoutes:
         namespaces:
           from: Selector
