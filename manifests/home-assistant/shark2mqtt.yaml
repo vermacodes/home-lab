@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shark2mqtt
+  namespace: home-assistant
+  labels:
+    app: shark2mqtt
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: shark2mqtt
+  template:
+    metadata:
+      labels:
+        app: shark2mqtt
+    spec:
+      securityContext:
+        fsGroup: 1000
+      nodeSelector:
+        kubernetes.io/hostname: node-2
+      containers:
+        - name: shark2mqtt
+          image: ghcr.io/camsoper/shark2mqtt:latest
+          env:
+            - name: SHARK_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: shark2mqtt-credentials
+                  key: shark-username
+            - name: SHARK_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: shark2mqtt-credentials
+                  key: shark-password
+            - name: MQTT_HOST
+              value: "mosquitto.home-assistant.svc.cluster.local"
+            - name: MQTT_PORT
+              value: "1883"
+            - name: MQTT_PREFIX
+              value: "shark2mqtt"
+            - name: SHARK_REGION
+              value: "us"
+            - name: POLL_INTERVAL
+              value: "300"
+            - name: POLL_INTERVAL_ACTIVE
+              value: "20"
+            - name: TOKEN_DIR
+              value: "/data"
+            - name: LOG_LEVEL
+              value: "INFO"
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "2Gi"
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: shark2mqtt-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: shark2mqtt
+  namespace: home-assistant
+spec:
+  selector:
+    app: shark2mqtt
+  ports:
+    - port: 8080
+      targetPort: 8080
+      name: http
+  type: ClusterIP

@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Run this script to create necessary Kubernetes secrets for go2rtc
-# This must be run before applying the go2rtc manifests.
+# Run this script to create necessary Kubernetes secrets for home-assistant namespace
+# This must be run before applying the manifests.
 
 # Check if already logged in
 if ! bw login --check > /dev/null 2>&1; then
@@ -36,6 +36,10 @@ THREAD_DATASET_HEX=$(bw get password 'thread-dataset-hex')
 # Retrieve home-assistant credentials
 HA_PASSWORD=$(bw get password 'home assistant')
 
+# Retrieve shark credentials from BitWarden
+SHARK_USERNAME=$(bw get username sharkninja.com)
+SHARK_PASSWORD=$(bw get password sharkninja.com)
+
 # Check if the credential retrieval was successful
 if [ -z "$HA_PASSWORD" ] || [ -z "$API_PASSWORD" ] || [ -z "$KASA_PASSWORD" ]; then
   echo "Failed to retrieve credentials from BitWarden."
@@ -43,6 +47,11 @@ if [ -z "$HA_PASSWORD" ] || [ -z "$API_PASSWORD" ] || [ -z "$KASA_PASSWORD" ]; t
   echo "1. A 'go2rtc-credentials' item in BitWarden"
   echo "2. A 'kasasmart.com' item in BitWarden"
   exit 1
+fi
+
+if [ -z "$SHARK_USERNAME" ] || [ -z "$SHARK_PASSWORD" ]; then
+  echo "Warning: Failed to retrieve shark credentials from BitWarden."
+  echo "shark2mqtt will not work without a 'sharkninja.com' item in BitWarden"
 fi
 
 # Delete existing secret if it exists
@@ -65,5 +74,18 @@ kubectl delete secret thread-dataset-hex -n home-assistant --ignore-not-found
 kubectl create secret generic thread-dataset-hex \
   --from-literal=thread-dataset-hex="${THREAD_DATASET_HEX}" \
   -n home-assistant
+
+echo "Secret 'thread-dataset-hex' created successfully in namespace 'home-assistant'"
+
+# Create shark2mqtt credentials secret if credentials were retrieved
+if [ -n "$SHARK_USERNAME" ] && [ -n "$SHARK_PASSWORD" ]; then
+  kubectl delete secret shark2mqtt-credentials -n home-assistant --ignore-not-found
+  kubectl create secret generic shark2mqtt-credentials \
+    --from-literal=shark-username="${SHARK_USERNAME}" \
+    --from-literal=shark-password="${SHARK_PASSWORD}" \
+    -n home-assistant
+  echo "Secret 'shark2mqtt-credentials' created successfully in namespace 'home-assistant'"
+fi
+
 # Unset the session token for security
 unset BW_SESSION
