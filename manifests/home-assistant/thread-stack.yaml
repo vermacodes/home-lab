@@ -10,6 +10,47 @@ data:
   otbr-extaddr.txt: |
     5a7e485747e99f2d
   
+  # Strict health check for the OpenThread Border Router.
+  otbr-health.sh: |
+    #!/bin/bash
+    set -eu
+
+    STATE="$(timeout 4 python3 -c 'import json, urllib.request; print(json.load(urllib.request.urlopen("http://127.0.0.1:8081/node/state", timeout=3)))')"
+
+    case "$STATE" in
+      leader|router|child)
+        exit 0
+        ;;
+      *)
+        echo "Thread unhealthy: $STATE"
+        exit 1
+        ;;
+    esac
+
+  # Verify both Matter Server and its OTBR dependency are functional.
+  matter-health.sh: |
+    #!/bin/sh
+    set -eu
+
+    curl --fail --silent --show-error \
+      --connect-timeout 1 --max-time 2 \
+      http://127.0.0.1:5580/info >/dev/null
+
+    RAW_STATE="$(curl --fail --silent --show-error \
+      --connect-timeout 1 --max-time 2 \
+      http://127.0.0.1:8081/node/state)"
+    STATE="$(printf '%s' "$RAW_STATE" | tr -d '"\r\n ')"
+
+    case "$STATE" in
+      leader|router|child)
+        exit 0
+        ;;
+      *)
+        echo "Thread unavailable to Matter Server: $STATE"
+        exit 1
+        ;;
+    esac
+
   # Restore script that runs on container startup
   restore-thread.sh: |
     #!/bin/bash
@@ -188,41 +229,28 @@ spec:
           value: "0.0.0.0"
         - name: OT_REST_LISTEN_PORT
           value: "30081"
+        - name: OT_LOG_LEVEL
+          value: "6"
         - name: DBUS_SYSTEM_BUS_ADDRESS
           value: "unix:path=/var/run/dbus/system_bus_socket"
+        startupProbe:
+          exec:
+            command:
+            - /scripts/otbr-health.sh
+          failureThreshold: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
         readinessProbe:
           exec:
             command:
-            - /bin/bash
-            - -c
-            - |
-              STATE=$(ot-ctl state 2>&1 | head -1 | tr -d '\r\n ')
-              case "$STATE" in
-                leader|router|child)
-                  exit 0
-                  ;;
-                *)
-                  echo "Thread not ready: $STATE"
-                  exit 1
-                  ;;
-              esac
-          initialDelaySeconds: 20
+            - /scripts/otbr-health.sh
           periodSeconds: 10
           timeoutSeconds: 5
           failureThreshold: 3
         livenessProbe:
           exec:
             command:
-            - /bin/bash
-            - -c
-            - |
-              STATE=$(ot-ctl state 2>&1 | head -1 | tr -d '\r\n ')
-              if [ -n "$STATE" ] && [ "$STATE" != "error" ]; then
-                exit 0
-              else
-                exit 1
-              fi
-          initialDelaySeconds: 30
+            - /scripts/otbr-health.sh
           periodSeconds: 30
           timeoutSeconds: 5
           failureThreshold: 3
@@ -254,6 +282,9 @@ spec:
           mountPath: /data
         - name: dbus
           mountPath: /var/run/dbus
+        - name: thread-restore-script
+          mountPath: /scripts
+          readOnly: true
         env:
         - name: MATTER_SERVER_STORAGE
           value: /data
@@ -262,43 +293,21 @@ spec:
         startupProbe:
           exec:
             command:
-            - /bin/sh
-            - -c
-            - |
-              STATE=$(curl -s http://localhost:8081/node/state 2>/dev/null | tr -d '"' | tr -d '\r\n ')
-              case "$STATE" in
-                leader|router|child)
-                  exit 0
-                  ;;
-                *)
-                  exit 1
-                  ;;
-              esac
+            - /scripts/matter-health.sh
           failureThreshold: 30
           periodSeconds: 10
           timeoutSeconds: 5
         readinessProbe:
           exec:
             command:
-            - /bin/sh
-            - -c
-            - |
-              STATE=$(curl -s http://localhost:8081/node/state 2>/dev/null | tr -d '"' | tr -d '\r\n ')
-              case "$STATE" in
-                leader|router|child)
-                  exit 0
-                  ;;
-                *)
-                  exit 1
-                  ;;
-              esac
+            - /scripts/matter-health.sh
           periodSeconds: 10
           timeoutSeconds: 5
           failureThreshold: 3
         livenessProbe:
-          tcpSocket:
-            port: 5580
-          initialDelaySeconds: 60
+          exec:
+            command:
+            - /scripts/matter-health.sh
           periodSeconds: 30
           timeoutSeconds: 5
           failureThreshold: 3
